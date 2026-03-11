@@ -6,16 +6,20 @@ local Camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
 
+local function isPlayerCharacter(model)
+    return Players:GetPlayerFromCharacter(model) ~= nil
+end
+
 local function createBox(part)
 
-    if part:FindFirstChild("arbbox") then
-        return part.arbbox
+    if part:FindFirstChild("npc_box") then
+        return part.npc_box
     end
 
     local box = Instance.new("BoxHandleAdornment")
-    box.Name = "arbbox"
+    box.Name = "npc_box"
     box.Adornee = part
-    box.Size = Vector3.new(0.5,0.5,0.5)
+    box.Size = Vector3.new(0.45,0.45,0.45)
     box.AlwaysOnTop = true
     box.Transparency = 0.2
     box.Parent = part
@@ -24,7 +28,7 @@ local function createBox(part)
 end
 
 
-local function visible(part)
+local function canSee(part)
 
     local origin = Camera.CFrame.Position
     local direction = part.Position - origin
@@ -48,25 +52,41 @@ RunService.RenderStepped:Connect(function()
     if not root then return end
 
 
-    for _,v in pairs(workspace:GetDescendants()) do
+    for _,model in pairs(workspace:GetDescendants()) do
 
-        if v:IsA("HumanoidRootPart") and v.Parent and v.Parent.Name:match("ARB") then
+        if model:IsA("Model") then
 
-            local dist = (v.Position - root.Position).Magnitude
-            local box = createBox(v)
+            if not isPlayerCharacter(model) then
 
-            if dist <= MAX_DISTANCE then
+                local hum = model:FindFirstChildOfClass("Humanoid")
 
-                box.Visible = true
+                if hum then
 
-                if visible(v) then
-                    box.Color3 = Color3.fromRGB(0,255,0)
-                else
-                    box.Color3 = Color3.fromRGB(255,0,0)
+                    local part = model:FindFirstChild("HumanoidRootPart", true)
+
+                    if part then
+
+                        local dist = (part.Position - root.Position).Magnitude
+                        local box = createBox(part)
+
+                        if dist <= MAX_DISTANCE then
+
+                            box.Visible = true
+
+                            if canSee(part) then
+                                box.Color3 = Color3.fromRGB(0,255,0)
+                            else
+                                box.Color3 = Color3.fromRGB(255,0,0)
+                            end
+
+                        else
+                            box.Visible = false
+                        end
+
+                    end
+
                 end
 
-            else
-                box.Visible = false
             end
 
         end
