@@ -7,18 +7,38 @@ local camera = workspace.CurrentCamera
 local MAX_DISTANCE = 700
 local NPCs = {}
 
+local function isNPC(model)
+
+    if not model:IsA("Model") then return false end
+    if not model:FindFirstChild("Humanoid") then return false end
+    if Players:GetPlayerFromCharacter(model) then return false end
+
+    return true
+
+end
+
+
+local function getHead(model)
+
+    return model:FindFirstChild("Head")
+        or model:FindFirstChild("HumanoidRootPart")
+
+end
+
+
 local function createBox(npc)
 
-    local head = npc:FindFirstChild("Head")
+    local head = getHead(npc)
     if not head then return end
-    if head:FindFirstChild("NPCBox") then return end
+
+    if head:FindFirstChild("NPC_BOX") then return end
 
     local box = Instance.new("BoxHandleAdornment")
-    box.Name = "NPCBox"
+    box.Name = "NPC_BOX"
     box.Adornee = head
-    box.Size = head.Size + Vector3.new(0.6,0.6,0.6)
+    box.Size = Vector3.new(2.5,2.5,2.5)
     box.AlwaysOnTop = true
-    box.Transparency = 0.3
+    box.Transparency = 0.25
     box.ZIndex = 5
     box.Parent = head
 
@@ -34,7 +54,7 @@ local function canSee(target)
     params.FilterDescendantsInstances = {player.Character}
     params.FilterType = Enum.RaycastFilterType.Blacklist
 
-    local result = workspace:Raycast(origin, direction, params)
+    local result = workspace:Raycast(origin,direction,params)
 
     if result and result.Instance then
         if result.Instance:IsDescendantOf(target.Parent) then
@@ -50,13 +70,11 @@ end
 
 local function addNPC(v)
 
-    if v:FindFirstChild("Humanoid") and v:FindFirstChild("Head") then
-        if not Players:GetPlayerFromCharacter(v) then
+    if isNPC(v) then
 
-            table.insert(NPCs,v)
-            createBox(v)
+        table.insert(NPCs,v)
+        createBox(v)
 
-        end
     end
 
 end
@@ -84,8 +102,8 @@ RunService.RenderStepped:Connect(function()
 
         if npc and npc.Parent then
 
-            local head = npc:FindFirstChild("Head")
-            local box = head and head:FindFirstChild("NPCBox")
+            local head = getHead(npc)
+            local box = head and head:FindFirstChild("NPC_BOX")
 
             if head and box then
 
