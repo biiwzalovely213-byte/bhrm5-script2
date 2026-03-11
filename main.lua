@@ -1,4 +1,6 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local MAX_DISTANCE = 250
@@ -19,36 +21,48 @@ local function createBox(head)
 	local box = Instance.new("BoxHandleAdornment")
 	box.Name = "NPC_BOX"
 	box.Adornee = head
-	box.Size = Vector3.new(0.6,0.6,0.6)
+	box.Size = Vector3.new(0.5,0.5,0.5)
 	box.AlwaysOnTop = true
-	box.Transparency = 0.2
+	box.Transparency = 0.25
 	box.Color3 = Color3.new(1,0,0)
 	box.Parent = head
 
 end
 
 
-local function checkNPC(model)
+local function scanNPC()
 
-	if not model:IsA("Model") then return end
-	if isPlayer(model) then return end
+	local char = LocalPlayer.Character
+	if not char then return end
 
-	local hum = model:FindFirstChildOfClass("Humanoid")
-	local head = model:FindFirstChild("Head")
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 
-	if hum and head then
-		createBox(head)
+	for _,model in pairs(Workspace:GetDescendants()) do
+
+		if model:IsA("Model") and not isPlayer(model) then
+
+			local hum = model:FindFirstChildOfClass("Humanoid")
+			local head = model:FindFirstChild("Head")
+
+			if hum and head then
+
+				local dist = (head.Position - root.Position).Magnitude
+
+				if dist <= MAX_DISTANCE then
+					createBox(head)
+				end
+
+			end
+
+		end
+
 	end
 
 end
 
 
-for _,v in pairs(workspace:GetChildren()) do
-	checkNPC(v)
+while true do
+	scanNPC()
+	task.wait(3)
 end
-
-
-workspace.ChildAdded:Connect(function(v)
-	task.wait(0.2)
-	checkNPC(v)
-end)
