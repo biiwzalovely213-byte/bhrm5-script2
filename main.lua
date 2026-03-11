@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -7,75 +8,112 @@ local MAX_DISTANCE = 250
 local NPCs = {}
 
 local function isNPC(model)
-	if not model:IsA("Model") then return false end
-	if not model:FindFirstChildOfClass("Humanoid") then return false end
-	if Players:GetPlayerFromCharacter(model) then return false end
-	return true
+
+    if not model:IsA("Model") then return false end
+    if not model:FindFirstChildOfClass("Humanoid") then return false end
+    if Players:GetPlayerFromCharacter(model) then return false end
+
+    return true
 end
 
 local function getHead(model)
-	return model:FindFirstChild("Head")
+    return model:FindFirstChild("Head")
 end
 
 local function createBox(npc)
 
-	local head = getHead(npc)
-	if not head then return end
+    local head = getHead(npc)
+    if not head then return end
 
-	if head:FindFirstChild("NPC_BOX") then return end
+    if head:FindFirstChild("NPC_BOX") then return end
 
-	local box = Instance.new("BoxHandleAdornment")
-	box.Name = "NPC_BOX"
-	box.Adornee = head
-	box.Size = Vector3.new(1.8,1.8,1.8)
-	box.AlwaysOnTop = true
-	box.Transparency = 0.25
-	box.ZIndex = 5
-	box.Parent = head
-
-end
-
-local function addNPC(model)
-
-	if isNPC(model) and not NPCs[model] then
-		NPCs[model] = true
-		createBox(model)
-	end
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "NPC_BOX"
+    box.Adornee = head
+    box.Size = Vector3.new(1.8,1.8,1.8)
+    box.AlwaysOnTop = true
+    box.Transparency = 0.25
+    box.ZIndex = 5
+    box.Parent = head
 
 end
 
--- scan models only
-for _,v in ipairs(workspace:GetChildren()) do
-	addNPC(v)
-end
+local function canSee(target)
 
-workspace.ChildAdded:Connect(addNPC)
+    local origin = camera.CFrame.Position
+    local direction = (target.Position - origin)
 
-while task.wait(0.15) do
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {player.Character}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
 
-	local char = player.Character
-	if not char then continue end
+    local result = workspace:Raycast(origin,direction,params)
 
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then continue end
+    if result and result.Instance then
+        if result.Instance:IsDescendantOf(target.Parent) then
+            return true
+        end
+        return false
+    end
 
-	for npc,_ in pairs(NPCs) do
-
-		if not npc.Parent then
-			NPCs[npc] = nil
-			continue
-		end
-
-		local head = npc:FindFirstChild("Head")
-		if not head then continue end
-
-		local box = head:FindFirstChild("NPC_BOX")
-		if not box then continue end
-
-		local distance = (head.Position - root.Position).Magnitude
-
-		box.Visible = distance <= MAX_DISTANCE
-
-	end
+    return true
 
 end
+
+local function addNPC(v)
+
+    if isNPC(v) then
+        table.insert(NPCs,v)
+        createBox(v)
+    end
+
+end
+
+for _,v in pairs(workspace:GetDescendants()) do
+    addNPC(v)
+end
+
+workspace.DescendantAdded:Connect(function(v)
+    addNPC(v)
+end)
+
+RunService.RenderStepped:Connect(function()
+
+    local char = player.Character
+    if not char then return end
+
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _,npc in pairs(NPCs) do
+
+        if npc and npc.Parent then
+
+            local head = getHead(npc)
+            local box = head and head:FindFirstChild("NPC_BOX")
+
+            if head and box then
+
+                local distance = (head.Position - root.Position).Magnitude
+
+                if distance <= MAX_DISTANCE then
+
+                    box.Visible = true
+
+                    if canSee(head) then
+                        box.Color3 = Color3.new(0,1,0)
+                    else
+                        box.Color3 = Color3.new(1,0,0)
+                    end
+
+                else
+                    box.Visible = false
+                end
+
+            end
+
+        end
+
+    end
+
+end)
