@@ -1,14 +1,4 @@
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local function isPlayer(model)
-	for _,p in pairs(Players:GetPlayers()) do
-		if p.Character == model then
-			return true
-		end
-	end
-	return false
-end
 
 local function createBox(part)
 
@@ -17,10 +7,10 @@ local function createBox(part)
 	local box = Instance.new("BoxHandleAdornment")
 	box.Name = "NPC_BOX"
 	box.Adornee = part
-	box.Size = Vector3.new(0.6,0.6,0.6)
+	box.Size = Vector3.new(0.5,0.5,0.5)
 	box.AlwaysOnTop = true
 	box.Color3 = Color3.fromRGB(255,0,0)
-	box.Transparency = 0.3
+	box.Transparency = 0.25
 	box.Parent = part
 
 end
@@ -30,16 +20,22 @@ while true do
 
 	for _,v in pairs(workspace:GetDescendants()) do
 
-		if v:IsA("Model") and not isPlayer(v) then
+		if v:IsA("Model") then
 
 			local hum = v:FindFirstChildOfClass("Humanoid")
 
 			if hum then
 
-				local part = v:FindFirstChild("Head") or v:FindFirstChild("HumanoidRootPart")
+				local player = Players:GetPlayerFromCharacter(v)
 
-				if part then
-					createBox(part)
+				if not player then
+
+					local head = v:FindFirstChild("Head") or v:FindFirstChild("HumanoidRootPart")
+
+					if head then
+						createBox(head)
+					end
+
 				end
 
 			end
@@ -48,6 +44,6 @@ while true do
 
 	end
 
-	task.wait(4)
+	task.wait(3)
 
 end
