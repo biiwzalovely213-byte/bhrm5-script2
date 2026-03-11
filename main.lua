@@ -1,89 +1,130 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
+local NPCs = {}
 
-local function isPlayerCharacter(model)
-    return Players:GetPlayerFromCharacter(model) ~= nil
-end
+local function isNPC(model)
 
-local function createBox(part)
+    if not model:IsA("Model") then return false end
 
-    if part:FindFirstChild("npc_box") then
-        return part.npc_box
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+
+    if Players:GetPlayerFromCharacter(model) ~= nil then
+        return false
     end
 
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "npc_box"
-    box.Adornee = part
-    box.Size = Vector3.new(0.45,0.45,0.45)
-    box.AlwaysOnTop = true
-    box.Transparency = 0.2
-    box.Parent = part
-
-    return box
+    return true
 end
 
 
-local function canSee(part)
+local function getHead(model)
 
-    local origin = Camera.CFrame.Position
-    local direction = part.Position - origin
+    return model:FindFirstChild("Head")
+
+end
+
+
+local function createBox(npc)
+
+    local head = getHead(npc)
+    if not head then return end
+
+    if head:FindFirstChild("NPC_BOX") then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "NPC_BOX"
+    box.Adornee = head
+    box.Size = Vector3.new(1.2,1.2,1.2)
+    box.AlwaysOnTop = true
+    box.Transparency = 0.25
+    box.ZIndex = 5
+    box.Parent = head
+
+end
+
+
+local function canSee(target)
+
+    local origin = camera.CFrame.Position
+    local direction = (target.Position - origin)
 
     local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {player.Character}
     params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = {LocalPlayer.Character, part.Parent}
 
-    local result = workspace:Raycast(origin, direction, params)
+    local result = workspace:Raycast(origin,direction,params)
 
-    return result == nil
+    if result and result.Instance then
+        if result.Instance:IsDescendantOf(target.Parent) then
+            return true
+        end
+        return false
+    end
+
+    return true
+
 end
+
+
+local function addNPC(v)
+
+    if isNPC(v) then
+
+        table.insert(NPCs,v)
+        createBox(v)
+
+    end
+
+end
+
+
+for _,v in pairs(workspace:GetDescendants()) do
+    addNPC(v)
+end
+
+
+workspace.DescendantAdded:Connect(function(v)
+    addNPC(v)
+end)
 
 
 RunService.RenderStepped:Connect(function()
 
-    local char = LocalPlayer.Character
+    local char = player.Character
     if not char then return end
 
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
+    for _,npc in pairs(NPCs) do
 
-    for _,model in pairs(workspace:GetDescendants()) do
+        if npc and npc.Parent then
 
-        if model:IsA("Model") then
+            local head = getHead(npc)
+            local box = head and head:FindFirstChild("NPC_BOX")
 
-            if not isPlayerCharacter(model) then
+            if head and box then
 
-                local hum = model:FindFirstChildOfClass("Humanoid")
+                local distance = (head.Position - root.Position).Magnitude
 
-                if hum then
+                if distance <= MAX_DISTANCE then
 
-                    local part = model:FindFirstChild("HumanoidRootPart", true)
+                    box.Visible = true
 
-                    if part then
-
-                        local dist = (part.Position - root.Position).Magnitude
-                        local box = createBox(part)
-
-                        if dist <= MAX_DISTANCE then
-
-                            box.Visible = true
-
-                            if canSee(part) then
-                                box.Color3 = Color3.fromRGB(0,255,0)
-                            else
-                                box.Color3 = Color3.fromRGB(255,0,0)
-                            end
-
-                        else
-                            box.Visible = false
-                        end
-
+                    if canSee(head) then
+                        box.Color3 = Color3.new(0,1,0)
+                    else
+                        box.Color3 = Color3.new(1,0,0)
                     end
+
+                else
+
+                    box.Visible = false
 
                 end
 
