@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
-local MAX_DISTANCE = 700
+local MAX_DISTANCE = 250
 local NPCs = {}
 
 local function isNPC(model)
@@ -20,8 +20,7 @@ end
 
 local function getHead(model)
 
-    return model:FindFirstChild("Head")
-        or model:FindFirstChild("HumanoidRootPart")
+    return model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
 
 end
 
@@ -36,9 +35,9 @@ local function createBox(npc)
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "NPC_BOX"
     box.Adornee = head
-    box.Size = Vector3.new(2.5,2.5,2.5)
+    box.Size = Vector3.new(2.2,2.2,2.2)
     box.AlwaysOnTop = true
-    box.Transparency = 0.25
+    box.Transparency = 0.3
     box.ZIndex = 5
     box.Parent = head
 
@@ -71,10 +70,8 @@ end
 local function addNPC(v)
 
     if isNPC(v) then
-
         table.insert(NPCs,v)
         createBox(v)
-
     end
 
 end
