@@ -1,13 +1,13 @@
-local folder = workspace:FindFirstChild("Folder")
-if not folder then return end
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
+local folder = workspace:WaitForChild("Folder")
+
 local MAX_DISTANCE = 250
+
 
 local function createBox(part)
 
@@ -18,7 +18,7 @@ local function createBox(part)
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "npcbox"
     box.Adornee = part
-    box.Size = Vector3.new(0.6,0.6,0.6)
+    box.Size = Vector3.new(0.5,0.5,0.5)
     box.AlwaysOnTop = true
     box.Transparency = 0.2
     box.Parent = part
@@ -50,9 +50,10 @@ RunService.RenderStepped:Connect(function()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    for _,npc in pairs(folder:GetChildren()) do
 
-        local part = npc:FindFirstChild("HumanoidRootPart")
+    for _,arb in pairs(folder:GetChildren()) do
+
+        local part = arb:FindFirstChild("HumanoidRootPart", true)
 
         if part then
 
