@@ -1,98 +1,80 @@
+local folder = workspace:WaitForChild("Folder")
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
 
-local function createBox(head)
+local function canSee(part)
 
-	if head:FindFirstChild("NPC_BOX") then
-		return head.NPC_BOX
-	end
+    local origin = camera.CFrame.Position
+    local direction = part.Position - origin
 
-	local box = Instance.new("BoxHandleAdornment")
-	box.Name = "NPC_BOX"
-	box.Adornee = head
-	box.Size = Vector3.new(0.25,0.25,0.25)
-	box.AlwaysOnTop = true
-	box.Transparency = 0.15
-	box.Parent = head
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
 
-	return box
+    local result = workspace:Raycast(origin,direction,params)
+
+    return result == nil
 end
 
 
-local function canSee(part)
+local function createBox(head)
 
-	local origin = Camera.CFrame.Position
-	local direction = part.Position - origin
+    if head:FindFirstChild("npc_box") then
+        return head.npc_box
+    end
 
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Blacklist
-	params.FilterDescendantsInstances = {
-		LocalPlayer.Character,
-		part.Parent
-	}
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "npc_box"
+    box.Adornee = head
+    box.Size = Vector3.new(0.3,0.3,0.3)
+    box.AlwaysOnTop = true
+    box.Transparency = 0.2
+    box.Parent = head
 
-	local result = workspace:Raycast(origin,direction,params)
-
-	return result == nil
+    return box
 end
 
 
 RunService.Heartbeat:Connect(function()
 
-	local char = LocalPlayer.Character
-	if not char then return end
+    local char = localPlayer.Character
+    if not char then return end
 
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
 
 
-	for _,model in pairs(workspace:GetDescendants()) do
+    for _,npc in pairs(folder:GetChildren()) do
 
-		if model:IsA("Model") then
+        local head = npc:FindFirstChild("Head") or npc:FindFirstChild("HumanoidRootPart")
 
-			local player = Players:GetPlayerFromCharacter(model)
+        if head then
 
-			if player then
-				continue
-			end
+            local dist = (head.Position - root.Position).Magnitude
+            local box = createBox(head)
 
-			local hum = model:FindFirstChildOfClass("Humanoid")
+            if dist <= MAX_DISTANCE then
 
-			if hum then
+                box.Visible = true
 
-				local head = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+                if canSee(head) then
+                    box.Color3 = Color3.fromRGB(0,255,0)
+                else
+                    box.Color3 = Color3.fromRGB(255,0,0)
+                end
 
-				if head then
+            else
+                box.Visible = false
+            end
 
-					local dist = (head.Position - root.Position).Magnitude
+        end
 
-					local box = createBox(head)
-
-					if dist <= MAX_DISTANCE then
-
-						box.Visible = true
-
-						if canSee(head) then
-							box.Color3 = Color3.fromRGB(0,255,0)
-						else
-							box.Color3 = Color3.fromRGB(255,0,0)
-						end
-
-					else
-						box.Visible = false
-					end
-
-				end
-
-			end
-
-		end
-
-	end
+    end
 
 end)
