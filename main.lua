@@ -10,15 +10,24 @@ local NPCs = {}
 local function isNPC(model)
 
     if not model:IsA("Model") then return false end
-    if not model:FindFirstChildOfClass("Humanoid") then return false end
-    if Players:GetPlayerFromCharacter(model) then return false end
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+
+    if Players:GetPlayerFromCharacter(model) ~= nil then
+        return false
+    end
 
     return true
 end
 
+
 local function getHead(model)
+
     return model:FindFirstChild("Head")
+
 end
+
 
 local function createBox(npc)
 
@@ -30,13 +39,14 @@ local function createBox(npc)
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "NPC_BOX"
     box.Adornee = head
-    box.Size = Vector3.new(1.8,1.8,1.8)
+    box.Size = Vector3.new(1.2,1.2,1.2)
     box.AlwaysOnTop = true
     box.Transparency = 0.25
     box.ZIndex = 5
     box.Parent = head
 
 end
+
 
 local function canSee(target)
 
@@ -60,22 +70,28 @@ local function canSee(target)
 
 end
 
+
 local function addNPC(v)
 
     if isNPC(v) then
+
         table.insert(NPCs,v)
         createBox(v)
+
     end
 
 end
+
 
 for _,v in pairs(workspace:GetDescendants()) do
     addNPC(v)
 end
 
+
 workspace.DescendantAdded:Connect(function(v)
     addNPC(v)
 end)
+
 
 RunService.RenderStepped:Connect(function()
 
@@ -107,7 +123,9 @@ RunService.RenderStepped:Connect(function()
                     end
 
                 else
+
                     box.Visible = false
+
                 end
 
             end
