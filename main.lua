@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -14,9 +15,9 @@ local function createBox(head)
 	local box = Instance.new("BoxHandleAdornment")
 	box.Name = "NPC_BOX"
 	box.Adornee = head
-	box.Size = Vector3.new(0.45,0.45,0.45)
+	box.Size = Vector3.new(0.25,0.25,0.25)
 	box.AlwaysOnTop = true
-	box.Transparency = 0.25
+	box.Transparency = 0.15
 	box.Parent = head
 
 	return box
@@ -49,40 +50,41 @@ RunService.Heartbeat:Connect(function()
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
-	for _,model in pairs(workspace:GetChildren()) do
+
+	for _,model in pairs(workspace:GetDescendants()) do
 
 		if model:IsA("Model") then
+
+			local player = Players:GetPlayerFromCharacter(model)
+
+			if player then
+				continue
+			end
 
 			local hum = model:FindFirstChildOfClass("Humanoid")
 
 			if hum then
 
-				local player = Players:GetPlayerFromCharacter(model)
+				local head = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
 
-				if not player then
+				if head then
 
-					local head = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
+					local dist = (head.Position - root.Position).Magnitude
 
-					if head then
+					local box = createBox(head)
 
-						local dist = (head.Position - root.Position).Magnitude
+					if dist <= MAX_DISTANCE then
 
-						local box = createBox(head)
+						box.Visible = true
 
-						if dist <= MAX_DISTANCE then
-
-							box.Visible = true
-
-							if canSee(head) then
-								box.Color3 = Color3.new(0,1,0)
-							else
-								box.Color3 = Color3.new(1,0,0)
-							end
-
+						if canSee(head) then
+							box.Color3 = Color3.fromRGB(0,255,0)
 						else
-							box.Visible = false
+							box.Color3 = Color3.fromRGB(255,0,0)
 						end
 
+					else
+						box.Visible = false
 					end
 
 				end
