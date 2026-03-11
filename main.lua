@@ -1,39 +1,88 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
-local function createBox(part)
+local MAX_DISTANCE = 250
 
-	if part:FindFirstChild("NPC_BOX") then return end
+local function createBox(head)
+
+	if head:FindFirstChild("NPC_BOX") then
+		return head.NPC_BOX
+	end
 
 	local box = Instance.new("BoxHandleAdornment")
 	box.Name = "NPC_BOX"
-	box.Adornee = part
-	box.Size = Vector3.new(0.5,0.5,0.5)
+	box.Adornee = head
+	box.Size = Vector3.new(0.45,0.45,0.45)
 	box.AlwaysOnTop = true
-	box.Color3 = Color3.fromRGB(255,0,0)
 	box.Transparency = 0.25
-	box.Parent = part
+	box.Parent = head
 
+	return box
 end
 
 
-while true do
+local function canSee(part)
 
-	for _,v in pairs(workspace:GetDescendants()) do
+	local origin = Camera.CFrame.Position
+	local direction = part.Position - origin
 
-		if v:IsA("Model") then
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = {
+		LocalPlayer.Character,
+		part.Parent
+	}
 
-			local hum = v:FindFirstChildOfClass("Humanoid")
+	local result = workspace:Raycast(origin,direction,params)
+
+	return result == nil
+end
+
+
+RunService.Heartbeat:Connect(function()
+
+	local char = LocalPlayer.Character
+	if not char then return end
+
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	for _,model in pairs(workspace:GetChildren()) do
+
+		if model:IsA("Model") then
+
+			local hum = model:FindFirstChildOfClass("Humanoid")
 
 			if hum then
 
-				local player = Players:GetPlayerFromCharacter(v)
+				local player = Players:GetPlayerFromCharacter(model)
 
 				if not player then
 
-					local head = v:FindFirstChild("Head") or v:FindFirstChild("HumanoidRootPart")
+					local head = model:FindFirstChild("Head") or model:FindFirstChild("HumanoidRootPart")
 
 					if head then
-						createBox(head)
+
+						local dist = (head.Position - root.Position).Magnitude
+
+						local box = createBox(head)
+
+						if dist <= MAX_DISTANCE then
+
+							box.Visible = true
+
+							if canSee(head) then
+								box.Color3 = Color3.new(0,1,0)
+							else
+								box.Color3 = Color3.new(1,0,0)
+							end
+
+						else
+							box.Visible = false
+						end
+
 					end
 
 				end
@@ -44,6 +93,4 @@ while true do
 
 	end
 
-	task.wait(3)
-
-end
+end)
