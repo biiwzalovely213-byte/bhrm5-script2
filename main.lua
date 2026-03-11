@@ -1,22 +1,19 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-
-local folder = workspace:WaitForChild("Folder")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
 
-
 local function createBox(part)
 
-    if part:FindFirstChild("npcbox") then
-        return part.npcbox
+    if part:FindFirstChild("arbbox") then
+        return part.arbbox
     end
 
     local box = Instance.new("BoxHandleAdornment")
-    box.Name = "npcbox"
+    box.Name = "arbbox"
     box.Adornee = part
     box.Size = Vector3.new(0.5,0.5,0.5)
     box.AlwaysOnTop = true
@@ -27,16 +24,16 @@ local function createBox(part)
 end
 
 
-local function visibleCheck(part)
+local function visible(part)
 
-    local origin = camera.CFrame.Position
+    local origin = Camera.CFrame.Position
     local direction = part.Position - origin
 
     local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {player.Character, part.Parent}
     params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterDescendantsInstances = {LocalPlayer.Character, part.Parent}
 
-    local result = workspace:Raycast(origin,direction,params)
+    local result = workspace:Raycast(origin, direction, params)
 
     return result == nil
 end
@@ -44,27 +41,25 @@ end
 
 RunService.RenderStepped:Connect(function()
 
-    local char = player.Character
+    local char = LocalPlayer.Character
     if not char then return end
 
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
 
-    for _,arb in pairs(folder:GetChildren()) do
+    for _,v in pairs(workspace:GetDescendants()) do
 
-        local part = arb:FindFirstChild("HumanoidRootPart", true)
+        if v:IsA("HumanoidRootPart") and v.Parent and v.Parent.Name:match("ARB") then
 
-        if part then
-
-            local dist = (part.Position - root.Position).Magnitude
-            local box = createBox(part)
+            local dist = (v.Position - root.Position).Magnitude
+            local box = createBox(v)
 
             if dist <= MAX_DISTANCE then
 
                 box.Visible = true
 
-                if visibleCheck(part) then
+                if visible(v) then
                     box.Color3 = Color3.fromRGB(0,255,0)
                 else
                     box.Color3 = Color3.fromRGB(255,0,0)
