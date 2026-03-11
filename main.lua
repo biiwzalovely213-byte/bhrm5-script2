@@ -4,14 +4,14 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
-local NPCs = {}
 local MAX_DISTANCE = 700
+local NPCs = {}
 
 local function createBox(npc)
-    if npc:FindFirstChild("NPCBox") then return end
 
     local head = npc:FindFirstChild("Head")
     if not head then return end
+    if head:FindFirstChild("NPCBox") then return end
 
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "NPCBox"
@@ -21,9 +21,12 @@ local function createBox(npc)
     box.Transparency = 0.3
     box.ZIndex = 5
     box.Parent = head
+
 end
 
+
 local function canSee(target)
+
     local origin = camera.CFrame.Position
     local direction = (target.Position - origin)
 
@@ -41,16 +44,33 @@ local function canSee(target)
     end
 
     return true
+
 end
 
-for _,v in pairs(workspace:GetDescendants()) do
+
+local function addNPC(v)
+
     if v:FindFirstChild("Humanoid") and v:FindFirstChild("Head") then
         if not Players:GetPlayerFromCharacter(v) then
+
             table.insert(NPCs,v)
             createBox(v)
+
         end
     end
+
 end
+
+
+for _,v in pairs(workspace:GetDescendants()) do
+    addNPC(v)
+end
+
+
+workspace.DescendantAdded:Connect(function(v)
+    addNPC(v)
+end)
+
 
 RunService.RenderStepped:Connect(function()
 
@@ -61,15 +81,18 @@ RunService.RenderStepped:Connect(function()
     if not root then return end
 
     for _,npc in pairs(NPCs) do
-        local head = npc:FindFirstChild("Head")
 
-        if head then
-            local box = head:FindFirstChild("NPCBox")
+        if npc and npc.Parent then
 
-            if box then
+            local head = npc:FindFirstChild("Head")
+            local box = head and head:FindFirstChild("NPCBox")
+
+            if head and box then
+
                 local distance = (head.Position - root.Position).Magnitude
 
                 if distance <= MAX_DISTANCE then
+
                     box.Visible = true
 
                     if canSee(head) then
@@ -79,10 +102,15 @@ RunService.RenderStepped:Connect(function()
                     end
 
                 else
+
                     box.Visible = false
+
                 end
+
             end
+
         end
+
     end
 
 end)
