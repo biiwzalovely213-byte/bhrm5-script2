@@ -390,7 +390,7 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         
         for part in pairs(trackedParts) do
 
-                if (part.Position - origin).Magnitude > 350 then
+                if (part.Position - origin).Magnitude > 1000 then
     continue
 end
             if part and part.Parent then
