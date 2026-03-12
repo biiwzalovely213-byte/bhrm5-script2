@@ -2,28 +2,27 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
 local NPCs = {}
 
+local function getHead(model)
+    return model:FindFirstChild("Head")
+end
+
+local function isPlayerCharacter(model)
+    return Players:GetPlayerFromCharacter(model) ~= nil
+end
+
 local function isNPC(model)
 
     if not model:IsA("Model") then return false end
+    if isPlayerCharacter(model) then return false end
 
     local hum = model:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
 
-    if Players:GetPlayerFromCharacter(model) then
-        return false
-    end
-
     return true
-end
-
-
-local function getHead(model)
-    return model:FindFirstChild("Head")
 end
 
 
@@ -31,7 +30,6 @@ local function createBox(npc)
 
     local head = getHead(npc)
     if not head then return end
-
     if head:FindFirstChild("NPC_BOX") then return end
 
     local box = Instance.new("BoxHandleAdornment")
@@ -47,11 +45,11 @@ local function createBox(npc)
 end
 
 
-local function addNPC(v)
+local function addNPC(model)
 
-    if isNPC(v) then
-        table.insert(NPCs,v)
-        createBox(v)
+    if isNPC(model) then
+        table.insert(NPCs,model)
+        createBox(model)
     end
 
 end
@@ -77,7 +75,7 @@ RunService.RenderStepped:Connect(function()
 
     for _,npc in pairs(NPCs) do
 
-        if npc and npc.Parent then
+        if npc and npc.Parent and not isPlayerCharacter(npc) then
 
             local head = getHead(npc)
             local box = head and head:FindFirstChild("NPC_BOX")
