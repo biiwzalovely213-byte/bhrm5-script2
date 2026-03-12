@@ -2,58 +2,11 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
-local Targets = {}
+local NPCs = {}
 
-local function getHead(model)
-    return model:FindFirstChild("Head")
-end
-
-local function createBox(target,color)
-    local head = getHead(target)
-    if not head then return end
-    if head:FindFirstChild("ESP_BOX") then return end
-
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "ESP_BOX"
-    box.Adornee = head
-    box.Size = Vector3.new(1.2,1.2,1.2)
-    box.AlwaysOnTop = true
-    box.Transparency = 0.25
-    box.ZIndex = 5
-    box.Color3 = color
-    box.Parent = head
-end
-
-
--- PLAYER ESP
-local function setupPlayer(p)
-
-    if p == player then return end
-
-    local function charAdded(char)
-        table.insert(Targets,{model = char,type = "PLAYER"})
-        createBox(char,Color3.fromRGB(0,170,255))
-    end
-
-    if p.Character then
-        charAdded(p.Character)
-    end
-
-    p.CharacterAdded:Connect(charAdded)
-
-end
-
-for _,p in pairs(Players:GetPlayers()) do
-    setupPlayer(p)
-end
-
-Players.PlayerAdded:Connect(setupPlayer)
-
-
-
--- NPC ESP
 local function isNPC(model)
 
     if not model:IsA("Model") then return false end
@@ -66,24 +19,52 @@ local function isNPC(model)
     end
 
     return true
+end
+
+
+local function getHead(model)
+    return model:FindFirstChild("Head")
+end
+
+
+local function createBox(npc)
+
+    local head = getHead(npc)
+    if not head then return end
+
+    if head:FindFirstChild("NPC_BOX") then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "NPC_BOX"
+    box.Adornee = head
+    box.Size = Vector3.new(1.2,1.2,1.2)
+    box.AlwaysOnTop = true
+    box.Transparency = 0.25
+    box.ZIndex = 5
+    box.Color3 = Color3.fromRGB(255,0,0)
+    box.Parent = head
 
 end
 
-local function addNPC(model)
 
-    if isNPC(model) then
-        table.insert(Targets,{model = model,type = "NPC"})
-        createBox(model,Color3.fromRGB(255,0,0))
+local function addNPC(v)
+
+    if isNPC(v) then
+        table.insert(NPCs,v)
+        createBox(v)
     end
 
 end
+
 
 for _,v in pairs(workspace:GetDescendants()) do
     addNPC(v)
 end
 
-workspace.DescendantAdded:Connect(addNPC)
 
+workspace.DescendantAdded:Connect(function(v)
+    addNPC(v)
+end)
 
 
 RunService.RenderStepped:Connect(function()
@@ -94,14 +75,12 @@ RunService.RenderStepped:Connect(function()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    for _,data in pairs(Targets) do
+    for _,npc in pairs(NPCs) do
 
-        local model = data.model
+        if npc and npc.Parent then
 
-        if model and model.Parent then
-
-            local head = getHead(model)
-            local box = head and head:FindFirstChild("ESP_BOX")
+            local head = getHead(npc)
+            local box = head and head:FindFirstChild("NPC_BOX")
 
             if head and box then
 
