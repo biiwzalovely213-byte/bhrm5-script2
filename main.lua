@@ -373,7 +373,7 @@ end)
 table.insert(wallConnections, childConn)
 
 local lastWallUpdate = 0
-local wallUpdateInterval = 0.05
+local wallUpdateInterval = 0.15
 local lastHitboxUpdate = 0
 local hitboxUpdateInterval = 0.1
 
@@ -389,6 +389,10 @@ local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
         rayParams.FilterDescendantsInstances = {localPlayer.Character}
         
         for part in pairs(trackedParts) do
+
+                if (part.Position - origin).Magnitude > 350 then
+    continue
+end
             if part and part.Parent then
                 local wallBox = part:FindFirstChild("Wall_Box")
                 if wallBox then
@@ -506,3 +510,13 @@ workspace.DescendantAdded:Connect(function(child)
 end)
 
 -- ===== END NPC SPAWN DETECTOR =====
+
+RunService.Stepped:Connect(function()
+
+    for npc in pairs(npcCache) do
+        if not npc or not npc.Parent then
+            npcCache[npc] = nil
+        end
+    end
+
+end)
