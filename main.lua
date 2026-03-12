@@ -2,64 +2,117 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
 local MAX_DISTANCE = 250
 
-local Targets = {}
+local npcCache = {}
+local trackedParts = {}
+
+local function isNPC(model)
+
+    if not model:IsA("Model") then return false end
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+
+    if Players:GetPlayerFromCharacter(model) ~= nil then
+        return false
+    end
+
+    return true
+
+end
+
 
 local function getHead(model)
+
     return model:FindFirstChild("Head")
+
 end
 
-local function isPlayer(model)
-    return Players:GetPlayerFromCharacter(model) ~= nil
-end
 
-local function createBox(model,color,name)
-    local head = getHead(model)
-    if not head then return end
-    if head:FindFirstChild(name) then return end
+local function createBox(part)
+
+    if not part then return end
+    if part:FindFirstChild("NPC_BOX") then return end
 
     local box = Instance.new("BoxHandleAdornment")
-    box.Name = name
-    box.Adornee = head
+    box.Name = "NPC_BOX"
+    box.Adornee = part
     box.Size = Vector3.new(1.2,1.2,1.2)
     box.AlwaysOnTop = true
     box.Transparency = 0.25
     box.ZIndex = 5
-    box.Color3 = color
-    box.Parent = head
+    box.Parent = part
+
+    trackedParts[part] = true
+
 end
 
-for _,v in pairs(workspace:GetDescendants()) do
-    if v:IsA("BoxHandleAdornment") and (v.Name == "PLAYER_BOX" or v.Name == "NPC_BOX") then
-        v:Destroy()
-    end
-end
 
-local function addTarget(model)
+local function canSee(target)
 
-    if not model:IsA("Model") then return end
+    local origin = camera.CFrame.Position
+    local direction = (target.Position - origin)
 
-    local hum = model:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {player.Character}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
 
-    if isPlayer(model) then
-        if model ~= player.Character then
-            table.insert(Targets,{model=model,type="PLAYER"})
-            createBox(model,Color3.fromRGB(0,170,255),"PLAYER_BOX")
+    local result = workspace:Raycast(origin,direction,params)
+
+    if result and result.Instance then
+
+        if result.Instance:IsDescendantOf(target.Parent) then
+            return true
         end
-    else
-        table.insert(Targets,{model=model,type="NPC"})
-        createBox(model,Color3.fromRGB(255,0,0),"NPC_BOX")
+
+        return false
+
+    end
+
+    return true
+
+end
+
+
+local function registerNPC(model)
+
+    if npcCache[model] then return end
+
+    npcCache[model] = true
+
+    local head = getHead(model)
+
+    if head then
+        createBox(head)
     end
 
 end
 
-for _,v in pairs(workspace:GetDescendants()) do
-    addTarget(v)
+
+local function scanNPC(obj)
+
+    if isNPC(obj) then
+        registerNPC(obj)
+    end
+
 end
 
-workspace.DescendantAdded:Connect(addTarget)
+
+for _,v in pairs(workspace:GetDescendants()) do
+    scanNPC(v)
+end
+
+
+workspace.DescendantAdded:Connect(function(v)
+
+    task.wait(0.2)
+    scanNPC(v)
+
+end)
+
 
 RunService.RenderStepped:Connect(function()
 
@@ -69,33 +122,30 @@ RunService.RenderStepped:Connect(function()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    for _,data in pairs(Targets) do
+    for npc in pairs(npcCache) do
 
-        local model = data.model
+        if npc and npc.Parent then
 
-        if model and model.Parent then
+            local head = getHead(npc)
+            local box = head and head:FindFirstChild("NPC_BOX")
 
-            local head = getHead(model)
+            if head and box then
 
-            if head then
+                local distance = (head.Position - root.Position).Magnitude
 
-                local box
+                if distance <= MAX_DISTANCE then
 
-                if data.type == "PLAYER" then
-                    box = head:FindFirstChild("PLAYER_BOX")
-                else
-                    box = head:FindFirstChild("NPC_BOX")
-                end
+                    box.Visible = true
 
-                if box then
-
-                    local distance = (head.Position - root.Position).Magnitude
-
-                    if distance <= MAX_DISTANCE then
-                        box.Visible = true
+                    if canSee(head) then
+                        box.Color3 = Color3.new(0,1,0)
                     else
-                        box.Visible = false
+                        box.Color3 = Color3.new(1,0,0)
                     end
+
+                else
+
+                    box.Visible = false
 
                 end
 
