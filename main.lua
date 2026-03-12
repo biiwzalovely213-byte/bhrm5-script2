@@ -479,36 +479,30 @@ do
         end
     end)
 end
--- ===== STRONG NPC SPAWN SCANNER (NO PLAYERS) =====
+-- ===== NPC SPAWN DETECTOR (USE ORIGINAL isNPC) =====
 
-workspace.DescendantAdded:Connect(function(v)
+workspace.DescendantAdded:Connect(function(child)
 
     if isUnloaded then return end
-    if not v:IsA("Model") then return end
 
-    local hum = v:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    if isNPC(child) then
 
-    for _,plr in pairs(Players:GetPlayers()) do
-        if plr.Character == v then
-            return
+        task.wait(0.5)
+
+        npcCache[child] = true
+
+        local head = child:FindFirstChild("Head")
+
+        if head then
+            trackedParts[head] = true
+
+            if wallEnabled then
+                createBoxForPart(head)
+            end
         end
-    end
 
-    task.wait(0.5)
-
-    npcCache[v] = true
-
-    local head = v:FindFirstChild("Head")
-
-    if head then
-        trackedParts[head] = true
-
-        if wallEnabled then
-            createBoxForPart(head)
-        end
     end
 
 end)
 
--- ===== END SCANNER =====
+-- ===== END NPC SPAWN DETECTOR =====
