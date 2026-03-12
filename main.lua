@@ -59,16 +59,19 @@ end
 
 local function setHitbox(enable)
 	for _,npc in pairs(NPCs) do
-		local root = getRoot(npc)
-		if root then
-			if enable then
-				root.Size = Vector3.new(6,6,6)
-				root.Transparency = 0.5
-				root.Color = Color3.fromRGB(255,0,0)
-				root.Material = Enum.Material.Neon
-			else
-				root.Size = Vector3.new(2,2,1)
-				root.Transparency = 1
+		if npc and npc.Parent and isNPC(npc) then
+			local root = getRoot(npc)
+			if root then
+				if enable then
+					root.Size = Vector3.new(6,6,6)
+					root.Transparency = 0.5
+					root.Color = Color3.fromRGB(255,0,0)
+					root.Material = Enum.Material.Neon
+				else
+					root.Size = Vector3.new(2,2,1)
+					root.Transparency = 1
+					root.Material = Enum.Material.Plastic
+				end
 			end
 		end
 	end
@@ -111,7 +114,7 @@ end)
 RunService.RenderStepped:Connect(function()
 
 	for _,npc in pairs(NPCs) do
-		if npc and npc.Parent then
+		if npc and npc.Parent and isNPC(npc) then
 			local head = getHead(npc)
 			local box = head and head:FindFirstChild("NPC_ESP")
 
@@ -169,7 +172,6 @@ layout.SortOrder = Enum.SortOrder.LayoutOrder
 title.LayoutOrder = 0
 
 local function makeButton(text,color,order)
-
 	local b = Instance.new("TextButton")
 	b.Parent = main
 	b.Size = UDim2.new(1,-10,0,35)
@@ -180,9 +182,7 @@ local function makeButton(text,color,order)
 	b.TextScaled = true
 	b.Text = text
 	b.LayoutOrder = order
-
 	return b
-
 end
 
 local fullBrightBtn = makeButton("Full Bright: OFF",Color3.fromRGB(60,60,120),1)
@@ -202,9 +202,7 @@ credit.TextSize = 14
 credit.LayoutOrder = 6
 
 fullBrightBtn.MouseButton1Click:Connect(function()
-
 	fullBrightEnabled = not fullBrightEnabled
-
 	if fullBrightEnabled then
 		fullBrightBtn.Text = "Full Bright: ON"
 		Lighting.Ambient = Color3.new(1,1,1)
@@ -215,51 +213,38 @@ fullBrightBtn.MouseButton1Click:Connect(function()
 		Lighting.Ambient = Color3.new(0.5,0.5,0.5)
 		Lighting.Brightness = 2
 	end
-
 end)
 
 wallBtn.MouseButton1Click:Connect(function()
-
 	wallEnabled = not wallEnabled
-
 	if wallEnabled then
 		wallBtn.Text = "Wall ON"
 	else
 		wallBtn.Text = "Wall OFF"
 	end
-
 end)
 
 hitboxBtn.MouseButton1Click:Connect(function()
-
 	npcHitboxEnabled = not npcHitboxEnabled
-
 	if npcHitboxEnabled then
 		hitboxBtn.Text = "NPC HITBOX: ON"
 	else
 		hitboxBtn.Text = "NPC HITBOX: OFF"
 	end
-
 	setHitbox(npcHitboxEnabled)
-
 end)
 
 espBtn.MouseButton1Click:Connect(function()
-
 	npcEspEnabled = not npcEspEnabled
-
 	if npcEspEnabled then
 		espBtn.Text = "NPC ESP ON"
 	else
 		espBtn.Text = "NPC ESP OFF"
 	end
-
 end)
 
 unloadBtn.MouseButton1Click:Connect(function()
-
 	removeESP()
 	setHitbox(false)
 	screenGui:Destroy()
-
 end)
