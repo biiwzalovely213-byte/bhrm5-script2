@@ -5,7 +5,9 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
-local NPCs = {}
+
+local npcCache = {}
+local trackedParts = {}
 
 local function isNPC(model)
 
@@ -19,6 +21,7 @@ local function isNPC(model)
     end
 
     return true
+
 end
 
 
@@ -29,21 +32,21 @@ local function getHead(model)
 end
 
 
-local function createBox(npc)
+local function createBox(part)
 
-    local head = getHead(npc)
-    if not head then return end
-
-    if head:FindFirstChild("NPC_BOX") then return end
+    if not part then return end
+    if part:FindFirstChild("NPC_BOX") then return end
 
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "NPC_BOX"
-    box.Adornee = head
+    box.Adornee = part
     box.Size = Vector3.new(1.2,1.2,1.2)
     box.AlwaysOnTop = true
     box.Transparency = 0.25
     box.ZIndex = 5
-    box.Parent = head
+    box.Parent = part
+
+    trackedParts[part] = true
 
 end
 
@@ -60,10 +63,13 @@ local function canSee(target)
     local result = workspace:Raycast(origin,direction,params)
 
     if result and result.Instance then
+
         if result.Instance:IsDescendantOf(target.Parent) then
             return true
         end
+
         return false
+
     end
 
     return true
@@ -71,25 +77,40 @@ local function canSee(target)
 end
 
 
-local function addNPC(v)
+local function registerNPC(model)
 
-    if isNPC(v) then
+    if npcCache[model] then return end
 
-        table.insert(NPCs,v)
-        createBox(v)
+    npcCache[model] = true
 
+    local head = getHead(model)
+
+    if head then
+        createBox(head)
+    end
+
+end
+
+
+local function scanNPC(obj)
+
+    if isNPC(obj) then
+        registerNPC(obj)
     end
 
 end
 
 
 for _,v in pairs(workspace:GetDescendants()) do
-    addNPC(v)
+    scanNPC(v)
 end
 
 
 workspace.DescendantAdded:Connect(function(v)
-    addNPC(v)
+
+    task.wait(0.2)
+    scanNPC(v)
+
 end)
 
 
@@ -101,7 +122,7 @@ RunService.RenderStepped:Connect(function()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    for _,npc in pairs(NPCs) do
+    for npc in pairs(npcCache) do
 
         if npc and npc.Parent then
 
