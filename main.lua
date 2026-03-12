@@ -479,37 +479,36 @@ do
         end
     end)
 end
--- ===== NPC SPAWN SCANNER (NPC ONLY) =====
+-- ===== STRONG NPC SPAWN SCANNER (NO PLAYERS) =====
 
 workspace.DescendantAdded:Connect(function(v)
 
     if isUnloaded then return end
-
     if not v:IsA("Model") then return end
 
     local hum = v:FindFirstChildOfClass("Humanoid")
     if not hum then return end
 
-    -- ถ้าเป็น Player ให้ข้าม
-    local playerOwner = Players:GetPlayerFromCharacter(v)
-    if playerOwner then return end
+    for _,plr in pairs(Players:GetPlayers()) do
+        if plr.Character == v then
+            return
+        end
+    end
 
-    task.wait(0.3)
+    task.wait(0.5)
 
     npcCache[v] = true
 
     local head = v:FindFirstChild("Head")
 
     if head then
-
         trackedParts[head] = true
 
         if wallEnabled then
             createBoxForPart(head)
         end
-
     end
 
 end)
 
--- ===== END NPC SPAWN SCANNER =====
+-- ===== END SCANNER =====
