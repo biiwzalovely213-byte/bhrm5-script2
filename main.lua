@@ -2,7 +2,6 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
 
 local MAX_DISTANCE = 250
 local NPCs = {}
@@ -43,30 +42,8 @@ local function createBox(npc)
     box.AlwaysOnTop = true
     box.Transparency = 0.25
     box.ZIndex = 5
+    box.Color3 = Color3.new(1,0,0)
     box.Parent = head
-
-end
-
-
-local function canSee(target)
-
-    local origin = camera.CFrame.Position
-    local direction = (target.Position - origin)
-
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {player.Character}
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-
-    local result = workspace:Raycast(origin,direction,params)
-
-    if result and result.Instance then
-        if result.Instance:IsDescendantOf(target.Parent) then
-            return true
-        end
-        return false
-    end
-
-    return true
 
 end
 
@@ -113,19 +90,9 @@ RunService.RenderStepped:Connect(function()
                 local distance = (head.Position - root.Position).Magnitude
 
                 if distance <= MAX_DISTANCE then
-
                     box.Visible = true
-
-                    if canSee(head) then
-                        box.Color3 = Color3.new(0,1,0)
-                    else
-                        box.Color3 = Color3.new(1,0,0)
-                    end
-
                 else
-
                     box.Visible = false
-
                 end
 
             end
