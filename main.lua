@@ -229,7 +229,7 @@ uiList.VerticalAlignment = Enum.VerticalAlignment.Top
 
 -- Credit Label
 local creditLabel = Instance.new("TextLabel", mainFrame)
-creditLabel.Text = "Credit: Ben = Katro"
+creditLabel.Text = "Credit: Toto eng jaXD"
 creditLabel.Size = UDim2.new(1, 0, 0, 20)
 creditLabel.Position = UDim2.new(0, 0, 1, -20)
 creditLabel.BackgroundTransparency = 1
