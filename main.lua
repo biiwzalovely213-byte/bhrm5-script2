@@ -1,306 +1,265 @@
-local Players = game:GetService("Players") 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
-local SoundService = game:GetService("SoundService")
 
-local localPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
-local trackedParts = {}
 local wallEnabled = false
 local npcHitboxEnabled = false
 local npcEspEnabled = false
-local wallConnections = {}
-local guiVisible = true
-local isUnloaded = false
-local originalSizes = {}
-local npcCache = {}
+local fullBrightEnabled = false
 
-local notifications = {}
-local screenGui
-
-local function playNotifySound()
-	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://9118828567"
-	sound.Volume = 1
-	sound.Parent = SoundService
-	sound:Play()
-	game:GetService("Debris"):AddItem(sound,2)
-end
-
-local function updateNotificationPositions()
-	for i,notif in ipairs(notifications) do
-		notif.Position = UDim2.new(0,10,1,-70-((i-1)*36))
-	end
-end
-
-local function notify(msg)
-	if not screenGui then return end
-	local notif = Instance.new("TextLabel",screenGui)
-	notif.Size = UDim2.new(0,200,0,32)
-	notif.Position = UDim2.new(0,10,1,-70)
-	notif.BackgroundColor3 = Color3.new(0,0,0)
-	notif.BackgroundTransparency = 0.25
-	notif.TextColor3 = Color3.new(1,1,1)
-	notif.Font = Enum.Font.GothamBold
-	notif.TextSize = 18
-	notif.Text = msg
-	notif.ZIndex = 999
-	notif.AnchorPoint = Vector2.new(0,1)
-	Instance.new("UICorner",notif).CornerRadius = UDim.new(0,8)
-
-	table.insert(notifications,1,notif)
-	updateNotificationPositions()
-	playNotifySound()
-
-	spawn(function()
-		wait(2)
-		for i=1,10 do
-			notif.TextTransparency = notif.TextTransparency + 0.1
-			notif.BackgroundTransparency = notif.BackgroundTransparency + 0.075
-			wait(0.05)
-		end
-		notif:Destroy()
-	end)
-end
-
-local function destroyAllBoxes()
-	for part in pairs(trackedParts) do
-		if part and part.Parent then
-			local wallBox = part:FindFirstChild("Wall_Box")
-			if wallBox then wallBox:Destroy() end
-		end
-	end
-	trackedParts = {}
-end
-
-local function resetRootSizes()
-	for model, originalSize in pairs(originalSizes) do
-		if model and model.Parent and model:FindFirstChild("UpperTorso") then
-			model.Root.Size = originalSize
-			model.Root.Transparency = 1
-		end
-	end
-	originalSizes = {}
-end
-
-local function createBoxForPart(part)
-	if isUnloaded or not part or not part.Parent then return end
-	if part:FindFirstChild("Wall_Box") then return end
-
-	task.wait(0.5)
-
-	if not part or not part.Parent or part:FindFirstChild("Wall_Box") then return end
-
-	local box = Instance.new("BoxHandleAdornment")
-	box.Name = "Wall_Box"
-	box.Size = part.Size + Vector3.new(0.1,0.1,0.1)
-	box.Adornee = part
-	box.AlwaysOnTop = true
-	box.ZIndex = 5
-	box.Color3 = Color3.fromRGB(255,0,0)
-	box.Transparency = 0.3
-	box.Parent = part
-
-	trackedParts[part] = true
-end
+local NPCs = {}
+local Boxes = {}
 
 local function isNPC(model)
-	if model:IsA("Model") and model.Name == "Male" then
-		for _,child in ipairs(model:GetChildren()) do
-			if child.Name:sub(1,3) == "AI_" or child:FindFirstChild("Machete") then
-				return true
-			end
-		end
-	end
-	return false
+	if not model:IsA("Model") then return false end
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	if not hum then return false end
+	if Players:GetPlayerFromCharacter(model) then return false end
+	return true
 end
 
-local function createBoxesForAllNPCs()
-	for npc in pairs(npcCache) do
-		if npc and npc.Parent then
-			local head = npc:FindFirstChild("Head")
-			if head then createBoxForPart(head) end
-		end
-	end
+local function getHead(model)
+	return model:FindFirstChild("Head")
 end
 
-local function registerExistingNPCs()
-	local descendants = workspace:GetDescendants()
-	for i = 1,#descendants do
-		local npc = descendants[i]
-		if isNPC(npc) then
-			npcCache[npc] = true
-			local head = npc:FindFirstChild("Head")
-			if head then trackedParts[head] = true end
-		end
-	end
+local function getRoot(model)
+	return model:FindFirstChild("HumanoidRootPart")
 end
 
-local function scanNPCSpawn(v)
-	if isNPC(v) then
-		npcCache[v] = true
-		local head = v:FindFirstChild("Head")
+local function createESP(npc)
+	local head = getHead(npc)
+	if not head then return end
+	if head:FindFirstChild("NPC_ESP") then return end
+
+	local box = Instance.new("BoxHandleAdornment")
+	box.Name = "NPC_ESP"
+	box.Adornee = head
+	box.Size = Vector3.new(1.5,1.5,1.5)
+	box.AlwaysOnTop = true
+	box.Transparency = 0.25
+	box.ZIndex = 5
+	box.Color3 = Color3.fromRGB(255,0,0)
+	box.Parent = head
+
+	Boxes[npc] = box
+end
+
+local function removeESP()
+	for _,npc in pairs(NPCs) do
+		local head = getHead(npc)
 		if head then
-			trackedParts[head] = true
-			if wallEnabled then
-				createBoxForPart(head)
+			local esp = head:FindFirstChild("NPC_ESP")
+			if esp then esp:Destroy() end
+		end
+	end
+end
+
+local function setHitbox(enable)
+	for _,npc in pairs(NPCs) do
+		local root = getRoot(npc)
+		if root then
+			if enable then
+				root.Size = Vector3.new(6,6,6)
+				root.Transparency = 0.5
+				root.Color = Color3.fromRGB(255,0,0)
+				root.Material = Enum.Material.Neon
+			else
+				root.Size = Vector3.new(2,2,1)
+				root.Transparency = 1
 			end
 		end
+	end
+end
+
+local function canSee(target)
+	local origin = camera.CFrame.Position
+	local direction = target.Position - origin
+
+	local params = RaycastParams.new()
+	params.FilterDescendantsInstances = {player.Character}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+
+	local result = workspace:Raycast(origin,direction,params)
+
+	if result and result.Instance then
+		if result.Instance:IsDescendantOf(target.Parent) then
+			return true
+		end
+		return false
+	end
+
+	return true
+end
+
+local function addNPC(v)
+	if isNPC(v) then
+		table.insert(NPCs,v)
 	end
 end
 
 for _,v in pairs(workspace:GetDescendants()) do
-	scanNPCSpawn(v)
+	addNPC(v)
 end
 
 workspace.DescendantAdded:Connect(function(v)
-	if isUnloaded then return end
-	scanNPCSpawn(v)
+	addNPC(v)
 end)
 
-local originalLighting = {
-	Ambient = Lighting.Ambient,
-	Brightness = Lighting.Brightness,
-	OutdoorAmbient = Lighting.OutdoorAmbient,
-	FogEnd = Lighting.FogEnd,
-	FogStart = Lighting.FogStart,
-	GlobalShadows = Lighting.GlobalShadows,
-	ColorShift_Bottom = Lighting.ColorShift_Bottom,
-	ColorShift_Top = Lighting.ColorShift_Top,
-}
+RunService.RenderStepped:Connect(function()
 
-local fullBrightEnabled = false
-local fullBrightConnection
+	for _,npc in pairs(NPCs) do
+		if npc and npc.Parent then
+			local head = getHead(npc)
+			local box = head and head:FindFirstChild("NPC_ESP")
 
-local function applyFullBright()
-	Lighting.Ambient = Color3.new(1,1,1)
-	Lighting.Brightness = 10
-	Lighting.OutdoorAmbient = Color3.new(1,1,1)
-	Lighting.FogEnd = 100000
-	Lighting.FogStart = 0
-	Lighting.GlobalShadows = false
-	Lighting.ColorShift_Bottom = Color3.new(0,0,0)
-	Lighting.ColorShift_Top = Color3.new(0,0,0)
-end
+			if npcEspEnabled then
+				if not box then
+					createESP(npc)
+				end
 
-local function restoreLighting()
-	for k,v in pairs(originalLighting) do
-		Lighting[k] = v
+				if head then
+					box = head:FindFirstChild("NPC_ESP")
+					if box then
+						if canSee(head) then
+							box.Color3 = Color3.fromRGB(0,255,0)
+						else
+							box.Color3 = Color3.fromRGB(255,0,0)
+						end
+					end
+				end
+			end
+		end
 	end
-end
 
-screenGui = Instance.new("ScreenGui",localPlayer:WaitForChild("PlayerGui"))
-screenGui.Name = "OperatorTools_GUI"
+	if not npcEspEnabled then
+		removeESP()
+	end
+
+end)
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
-local mainFrame = Instance.new("Frame",screenGui)
-mainFrame.Position = UDim2.new(0,10,0,10)
-mainFrame.Size = UDim2.new(0,200,0,268)
-mainFrame.BackgroundColor3 = Color3.fromRGB(10,10,10)
-mainFrame.BorderSizePixel = 0
-mainFrame.Visible = guiVisible
-mainFrame.AnchorPoint = Vector2.new(0,0)
-Instance.new("UICorner",mainFrame).CornerRadius = UDim.new(0,8)
+local main = Instance.new("Frame")
+main.Parent = screenGui
+main.Size = UDim2.new(0,200,0,260)
+main.Position = UDim2.new(0,10,0,10)
+main.BackgroundColor3 = Color3.fromRGB(10,10,10)
+main.BorderSizePixel = 0
 
-local title = Instance.new("TextLabel",mainFrame)
-title.Text = "BHRM5 Operator Tools"
+local title = Instance.new("TextLabel")
+title.Parent = main
 title.Size = UDim2.new(1,0,0,30)
-title.Position = UDim2.new(0,0,0,0)
+title.Text = "BHRM5 Operator Tools"
 title.BackgroundColor3 = Color3.fromRGB(20,20,20)
 title.TextColor3 = Color3.new(1,1,1)
 title.Font = Enum.Font.GothamBold
 title.TextScaled = true
 title.BorderSizePixel = 0
-Instance.new("UICorner",title)
 
-local buttonContainer = Instance.new("Frame",mainFrame)
-buttonContainer.Position = UDim2.new(0,0,0,40)
-buttonContainer.Size = UDim2.new(1,0,1,-60)
-buttonContainer.BackgroundTransparency = 1
+local layout = Instance.new("UIListLayout")
+layout.Parent = main
+layout.Padding = UDim.new(0,6)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local uiList = Instance.new("UIListLayout",buttonContainer)
-uiList.Padding = UDim.new(0,8)
-uiList.FillDirection = Enum.FillDirection.Vertical
-uiList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-uiList.VerticalAlignment = Enum.VerticalAlignment.Top
+title.LayoutOrder = 0
 
-local creditLabel = Instance.new("TextLabel",mainFrame)
-creditLabel.Text = "Credit: Ben = Katro"
-creditLabel.Size = UDim2.new(1,0,0,20)
-creditLabel.Position = UDim2.new(0,0,1,-20)
-creditLabel.BackgroundTransparency = 1
-creditLabel.TextColor3 = Color3.new(1,1,1)
-creditLabel.Font = Enum.Font.Gotham
-creditLabel.TextSize = 14
-creditLabel.TextXAlignment = Enum.TextXAlignment.Center
+local function makeButton(text,color,order)
 
-local function createButton(text,color,parent)
-	local btn = Instance.new("TextButton",parent)
-	btn.Size = UDim2.new(1,-20,0,30)
-	btn.Text = text
-	btn.BackgroundColor3 = color
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.Font = Enum.Font.Gotham
-	btn.TextScaled = true
-	Instance.new("UICorner",btn)
-	return btn
+	local b = Instance.new("TextButton")
+	b.Parent = main
+	b.Size = UDim2.new(1,-10,0,35)
+	b.Position = UDim2.new(0,5,0,0)
+	b.BackgroundColor3 = color
+	b.TextColor3 = Color3.new(1,1,1)
+	b.Font = Enum.Font.GothamBold
+	b.TextScaled = true
+	b.Text = text
+	b.LayoutOrder = order
+
+	return b
+
 end
 
-local fullBrightBtn = createButton("Full Bright: OFF",Color3.fromRGB(40,40,80),buttonContainer)
+local fullBrightBtn = makeButton("Full Bright: OFF",Color3.fromRGB(60,60,120),1)
+local wallBtn = makeButton("Wall OFF",Color3.fromRGB(70,70,70),2)
+local hitboxBtn = makeButton("NPC HITBOX: OFF",Color3.fromRGB(120,40,40),3)
+local espBtn = makeButton("NPC ESP OFF",Color3.fromRGB(40,120,40),4)
+local unloadBtn = makeButton("Unload",Color3.fromRGB(150,0,0),5)
+
+local credit = Instance.new("TextLabel")
+credit.Parent = main
+credit.Size = UDim2.new(1,0,0,20)
+credit.BackgroundTransparency = 1
+credit.Text = "Credit: Ben = Katro"
+credit.TextColor3 = Color3.new(1,1,1)
+credit.Font = Enum.Font.Gotham
+credit.TextSize = 14
+credit.LayoutOrder = 6
+
 fullBrightBtn.MouseButton1Click:Connect(function()
+
 	fullBrightEnabled = not fullBrightEnabled
+
 	if fullBrightEnabled then
-		if fullBrightConnection then fullBrightConnection:Disconnect() end
-		fullBrightConnection = RunService.RenderStepped:Connect(applyFullBright)
 		fullBrightBtn.Text = "Full Bright: ON"
-		notify("FullBright Enabled!")
+		Lighting.Ambient = Color3.new(1,1,1)
+		Lighting.Brightness = 10
+		Lighting.FogEnd = 100000
 	else
-		if fullBrightConnection then
-			fullBrightConnection:Disconnect()
-			fullBrightConnection = nil
-		end
-		restoreLighting()
 		fullBrightBtn.Text = "Full Bright: OFF"
-		notify("FullBright Disabled.")
+		Lighting.Ambient = Color3.new(0.5,0.5,0.5)
+		Lighting.Brightness = 2
 	end
+
 end)
 
-local toggleBtn = createButton("Wall OFF",Color3.fromRGB(40,40,40),buttonContainer)
-toggleBtn.MouseButton1Click:Connect(function()
+wallBtn.MouseButton1Click:Connect(function()
+
 	wallEnabled = not wallEnabled
-	toggleBtn.Text = wallEnabled and "Wall ON" or "Wall OFF"
+
 	if wallEnabled then
-		createBoxesForAllNPCs()
-		notify("Wall ESP Enabled!")
+		wallBtn.Text = "Wall ON"
 	else
-		destroyAllBoxes()
-		notify("Wall ESP Disabled.")
+		wallBtn.Text = "Wall OFF"
 	end
+
 end)
 
-registerExistingNPCs()
+hitboxBtn.MouseButton1Click:Connect(function()
 
-RunService.RenderStepped:Connect(function(deltaTime)
-	if isUnloaded then return end
+	npcHitboxEnabled = not npcHitboxEnabled
 
-	if wallEnabled then
-		local origin = camera.CFrame.Position
-		local rayParams = RaycastParams.new()
-		rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-		rayParams.FilterDescendantsInstances = {localPlayer.Character}
-
-		for part in pairs(trackedParts) do
-			if part and part.Parent then
-				local wallBox = part:FindFirstChild("Wall_Box")
-				if wallBox then
-					rayParams.FilterDescendantsInstances[2] = part
-					local result = workspace:Raycast(origin,part.Position-origin,rayParams)
-					local isVisible = not result or result.Instance:IsDescendantOf(part.Parent)
-					wallBox.Color3 = isVisible and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0)
-				end
-			end
-		end
+	if npcHitboxEnabled then
+		hitboxBtn.Text = "NPC HITBOX: ON"
+	else
+		hitboxBtn.Text = "NPC HITBOX: OFF"
 	end
+
+	setHitbox(npcHitboxEnabled)
+
+end)
+
+espBtn.MouseButton1Click:Connect(function()
+
+	npcEspEnabled = not npcEspEnabled
+
+	if npcEspEnabled then
+		espBtn.Text = "NPC ESP ON"
+	else
+		espBtn.Text = "NPC ESP OFF"
+	end
+
+end)
+
+unloadBtn.MouseButton1Click:Connect(function()
+
+	removeESP()
+	setHitbox(false)
+	screenGui:Destroy()
+
 end)
